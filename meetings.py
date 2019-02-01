@@ -48,9 +48,15 @@ for event in before.xpath('//*[@class="list-name"]/a'):
 
 print len(events), "events"
 
+def safe_text(x):
+    try:
+        return x[0].text
+    except IndexError:
+        return ''
+
 def people(aa): # affiliation nodes
     return [
-      [ a.getprevious().text, a.xpath('.//*[@class="text"]')[0].text ]
+      [ a.getprevious().text, safe_text(a.xpath('.//*[@class="text"]')) ]
       for a in aa ]
 
 single = len(sys.argv)>2
@@ -62,10 +68,13 @@ for e in events:
     page = html.fromstring(
       s.get('https://indico.cern.ch/event/'+e[0]+'/').text )
 
+    if page.xpath('(//*[@class="main"])[1]/div/div')[0].get('class')!='event-wrapper':
+        continue
+
     talks = [ ]
     for t in page.xpath('//*[@class="meeting-timetable"]/*'):
         talks.append({
-          'title': t.xpath('.//*[@class="timetable-title "]')[0].text,
+          'title': safe_text(t.xpath('.//*[@class="timetable-title "]')),
           'speakers': people(t.xpath(
             './/*[@class="speaker-list"]//*[@class="affiliation"]')),
           'material': [ a.get('href') for a in t.xpath(
@@ -74,16 +83,17 @@ for e in events:
 
     e.append({
       'time': page.xpath('//*[@class="event-date"]//time')[0].get('datetime'),
-      'vidyo': page.xpath('//*[@class="event-service-title"]')[0].text,
+      'vidyo': safe_text(page.xpath('//*[@class="event-service-title"]')),
       'chairs': people(page.xpath(
         '//*[@class="chairperson-list"]//*[@class="affiliation"]')),
       'talks': talks,
       'minutes': [ a.get('href') for a in page.xpath(
           '//*[@class="event-note-section"]//a[@target="_blank"]') ] + \
         [ a.get('href') for a in page.xpath(
-          '//*[@class="event-sub-header"]//*[@class="folder "]//a[@target="_blank"]') ],
-      'location': page.xpath(
-        '//*[@class="event-location"]//*[@class="text"]')[0].text
+          '//*[@class="event-sub-header"]//*[@class="folder "]//a[@target="_blank"]'
+        ) ],
+      'location': safe_text(page.xpath(
+        '//*[@class="event-location"]//*[@class="text"]'))
     })
 
 if single:
