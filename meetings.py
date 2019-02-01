@@ -35,27 +35,59 @@ for event in page.xpath(
 ):
     add_event(event)
 
-# print "Getting previous events"
-# before = 'data-event-list-before'
-# before = page.xpath('//*[@'+before+']')[0].get(before)
-# before = s.get(
-#     url+('' if url.endswith('/') else '/')+'event-list?before='+before
-# ).content
-# before = html.fromstring( json.loads(before)['html'] )
-#
-# for event in before.xpath('//*[@class="list-name"]/a'):
-#     add_event(event)
+print "Getting previous events"
+before = 'data-event-list-before'
+before = page.xpath('//*[@'+before+']')[0].get(before)
+before = s.get(
+    url+('' if url.endswith('/') else '/')+'event-list?before='+before
+).content
+before = html.fromstring( json.loads(before)['html'] )
+
+for event in before.xpath('//*[@class="list-name"]/a'):
+    add_event(event)
 
 print len(events), "events"
 
-for e in events:
+import pprint
+pp = pprint.PrettyPrinter(indent=2)
+
+def person(a): # affiliation node
+    return [ a.getprevious().text, a.xpath('.//*[@class="text"]')[0].text ]
+
+def people(aa):
+    return [ person(a) for a in aa ]
+
+# for e in events:
+for e in [next(e for e in events if e[0]==sys.argv[2])]:
     print e
     page = html.fromstring(
-        s.get('https://indico.cern.ch/event/'+e[0]+'/').content )
-    d = { }
-    d['time'] = page.xpath('//*[@class="event-date"]//time')[0].get('datetime')
-    e.append(d)
+      s.get('https://indico.cern.ch/event/'+e[0]+'/').content )
 
-    print e
+    talks = [ ]
+    for t in page.xpath('//*[@class="meeting-timetable"]/*'):
+        talks.append({
+          'title': t.xpath('.//*[@class="timetable-title "]')[0].text,
+          'speakers': people(t.xpath(
+            './/*[@class="speaker-list"]//*[@class="affiliation"]')),
+          'material': [ a.get('href') for a in t.xpath(
+            './/*[@class="material-list"]//a') ]
+        })
+
+    e.append({
+      'time': page.xpath('//*[@class="event-date"]//time')[0].get('datetime'),
+      'vidyo': page.xpath('//*[@class="event-service-title"]')[0].text,
+      'chairs': people(page.xpath(
+        '//*[@class="chairperson-list"]//*[@class="affiliation"]')),
+      'talks': talks,
+      'minutes': [ a.get('href') for a in page.xpath(
+          '//*[@class="event-note-section"]//a[@target="_blank"]') ] + \
+        [ a.get('href') for a in page.xpath(
+          '//*[@class="event-sub-header"]//*[@class="folder "]//a[@target="_blank"]') ],
+      'location': page.xpath(
+        '//*[@class="event-location"]//*[@class="text"]')[0].text
+    })
+
+    # print e
+    pp.pprint(e)
     break
 
