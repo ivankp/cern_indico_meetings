@@ -88,6 +88,11 @@ for e in [next(e for e in events if e[0]==sys.argv[2])]:
     })
 
     # print e
-    pp.pprint(e)
+    # pp.pprint(e)
     break
+
+import yaml
+
+with open('meetings.yml','w') as f:
+    yaml.dump(events, f)
 
