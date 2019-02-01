@@ -9,7 +9,7 @@ if len(sys.argv)==1:
     sys.exit(1)
 url = sys.argv[1]
 
-import requests, json, re
+import requests, json, re, yaml
 import cern_sso
 from lxml import html, etree
 
@@ -19,7 +19,7 @@ print "Getting cookies"
 s.cookies = cern_sso.krb_sign_on(url)
 
 print "Fetching", url
-page = html.fromstring( s.get(url).content )
+page = html.fromstring( s.get(url).text )
 
 events = [ ]
 
@@ -40,7 +40,7 @@ before = 'data-event-list-before'
 before = page.xpath('//*[@'+before+']')[0].get(before)
 before = s.get(
     url+('' if url.endswith('/') else '/')+'event-list?before='+before
-).content
+).text
 before = html.fromstring( json.loads(before)['html'] )
 
 for event in before.xpath('//*[@class="list-name"]/a'):
@@ -48,20 +48,19 @@ for event in before.xpath('//*[@class="list-name"]/a'):
 
 print len(events), "events"
 
-import pprint
-pp = pprint.PrettyPrinter(indent=2)
+def people(aa): # affiliation nodes
+    return [
+      [ a.getprevious().text, a.xpath('.//*[@class="text"]')[0].text ]
+      for a in aa ]
 
-def person(a): # affiliation node
-    return [ a.getprevious().text, a.xpath('.//*[@class="text"]')[0].text ]
+single = len(sys.argv)>2
+if single:
+    events = [next(e for e in events if e[0]==sys.argv[2])]
 
-def people(aa):
-    return [ person(a) for a in aa ]
-
-# for e in events:
-for e in [next(e for e in events if e[0]==sys.argv[2])]:
-    print e
+for e in events:
+    print '%s: %s' % (e[0],e[1])
     page = html.fromstring(
-      s.get('https://indico.cern.ch/event/'+e[0]+'/').content )
+      s.get('https://indico.cern.ch/event/'+e[0]+'/').text )
 
     talks = [ ]
     for t in page.xpath('//*[@class="meeting-timetable"]/*'):
@@ -87,12 +86,9 @@ for e in [next(e for e in events if e[0]==sys.argv[2])]:
         '//*[@class="event-location"]//*[@class="text"]')[0].text
     })
 
-    # print e
-    # pp.pprint(e)
-    break
-
-import yaml
-
-with open('meetings.yml','w') as f:
-    yaml.dump(events, f)
+if single:
+    print yaml.dump(events)
+else:
+    with open(get_num_re.findall(url)[-1]+'.yml','w') as f:
+        yaml.dump(events, f)
 
