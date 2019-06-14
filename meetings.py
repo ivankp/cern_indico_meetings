@@ -1,15 +1,15 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 # https://github.com/cerndb/cern-sso-python
 
 import sys
 
 if len(sys.argv)==1:
-    print "usage:", sys.argv[0], "URL"
+    print "usage:", sys.argv[0], "category-URL [event-id [single|last]]"
     sys.exit(1)
 url = sys.argv[1]
 
-import requests, json, re, yaml
+import requests, json, re, yaml, glob
 import cern_sso
 from lxml import html, etree
 
@@ -31,7 +31,7 @@ def add_event(e):
     ])
 
 for event in page.xpath(
-'//*[@class="event-list"]//*[@class="list-name"]/a'
+'//*[@class="event-list"]//*[@class="list-name"]//a'
 ):
     add_event(event)
 
@@ -43,7 +43,7 @@ before = s.get(
 ).text
 before = html.fromstring( json.loads(before)['html'] )
 
-for event in before.xpath('//*[@class="list-name"]/a'):
+for event in before.xpath('//*[@class="list-name"]//a'):
     add_event(event)
 
 print len(events), "events"
@@ -59,9 +59,23 @@ def people(aa): # affiliation nodes
       [ a.getprevious().text, safe_text(a.xpath('.//*[@class="text"]')) ]
       for a in aa ]
 
-single = len(sys.argv)>2
+def index_of(xs,f):
+    i = 0
+    for x in xs:
+        if f(x): break
+        i += 1
+    return i
+
+single = False
+last = False
+if len(sys.argv)>2:
+    if len(sys.argv)<4 or sys.argv[3]=='single': single = True
+    elif sys.argv[3]=='last': last = True
+
 if single:
     events = [next(e for e in events if e[0]==sys.argv[2])]
+elif last:
+    events = events[:index_of(events, lambda e: e[0]==sys.argv[2])+1]
 
 for e in events:
     print '%s: %s' % (e[0],e[1])
@@ -99,6 +113,14 @@ for e in events:
 if single:
     print yaml.dump(events)
 else:
-    with open(get_num_re.findall(url)[-1]+'.yml','w') as f:
+    name = get_num_re.findall(url)[-1]
+    files = glob.glob(name+'*.yml')
+    if len(files)>0:
+        name += '-' + str(max(
+            int(re.match(name+'(?:-(\d+))?', x).group(1) or 0) for x in files
+        ) + 1 )
+    name += '.yml'
+
+    with open(name,'w') as f:
         yaml.dump(events, f)
 
