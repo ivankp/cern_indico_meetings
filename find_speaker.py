@@ -1,17 +1,25 @@
 #!/usr/bin/env python
 
-import yaml
+import sys
 
-with open('6142.yml','r') as f:
+if len(sys.argv)!=3:
+    print "usage:", sys.argv[0], "file speaker"
+    sys.exit(1)
+
+import sys, yaml, re
+
+with open(sys.argv[1],'r') as f:
     meetings = yaml.load(f)
 
 for m in meetings:
     if len(m)>2:
         for t in m[2]['talks']:
             for s in t['speakers']:
-                if 'Rachel' in s[0]:
+                if sys.argv[2] in s[0]:
+                    print re.sub('T.*','',m[2]['time'])
                     print t['title']
                     for x in t['material']:
                         print x
                     print ''
+                    break
 
