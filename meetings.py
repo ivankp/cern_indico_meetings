@@ -13,6 +13,9 @@ import requests, json, re, yaml, glob
 import cern_sso
 from lxml import html, etree
 
+if re.match('^\d+$',url):
+    url = 'https://indico.cern.ch/category/'+url+'/'
+
 s = requests.Session()
 
 print "Getting cookies"
