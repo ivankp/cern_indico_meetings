@@ -1,15 +1,15 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 # https://github.com/cerndb/cern-sso-python
 
 import sys
 
 if len(sys.argv)==1:
-    print "usage:", sys.argv[0], "category-URL [event-id [single|last]]"
+    print("usage:", sys.argv[0], "category-URL [event-id [single|last]]")
     sys.exit(1)
 url = sys.argv[1]
 
-import requests, json, re, yaml, glob
+import requests, json, re, yaml, glob, os
 import cern_sso
 from lxml import html, etree
 
@@ -18,10 +18,14 @@ if re.match('^\d+$',url):
 
 s = requests.Session()
 
-print "Getting cookies"
-s.cookies = cern_sso.krb_sign_on(url)
+print("Getting cookies")
+s.cookies = cern_sso.cert_sign_on(url,
+    os.path.abspath("cert/cert_pkcs12.pem"),
+    os.path.abspath("cert/cert.key"),
+    None
+)
 
-print "Fetching", url
+print("Fetching", url)
 page = html.fromstring( s.get(url).text )
 
 events = [ ]
@@ -38,7 +42,7 @@ for event in page.xpath(
 ):
     add_event(event)
 
-print "Getting previous events"
+print("Getting previous events")
 before = 'data-event-list-before'
 before = page.xpath('//*[@'+before+']')[0].get(before)
 before = s.get(
@@ -49,7 +53,7 @@ before = html.fromstring( json.loads(before)['html'] )
 for event in before.xpath('//*[@class="list-name"]//a'):
     add_event(event)
 
-print len(events), "events"
+print(len(events), "events")
 
 def safe_text(x):
     try:
@@ -81,7 +85,7 @@ elif last:
     events = events[:index_of(events, lambda e: e[0]==sys.argv[2])+1]
 
 for e in events:
-    print '%s: %s' % (e[0],e[1])
+    print('%s: %s' % (e[0],e[1]))
     page = html.fromstring(
       s.get('https://indico.cern.ch/event/'+e[0]+'/').text )
 
@@ -114,7 +118,7 @@ for e in events:
     })
 
 if single:
-    print yaml.dump(events)
+    print(yaml.dump(events))
 else:
     name = get_num_re.findall(url)[-1]
     files = glob.glob(name+'*.yml')

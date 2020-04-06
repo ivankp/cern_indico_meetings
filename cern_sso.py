@@ -1,11 +1,10 @@
 from six.moves.urllib.parse import urlparse, urljoin
 
-import logging
 import xml.etree.ElementTree as ET
 
 import requests
-from requests_kerberos import HTTPKerberosAuth, OPTIONAL
 
+import logging
 try:  # Python 2.7+
     from logging import NullHandler
 except ImportError:
@@ -106,6 +105,7 @@ def krb_sign_on(url, cookiejar=None):
     If a cookiejar-like object (such as a dictionary) is passed as the
     cookiejar keword argument, this is passed on to the Session.
     """
+    from requests_kerberos import HTTPKerberosAuth, OPTIONAL
 
     kerberos_auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
 
